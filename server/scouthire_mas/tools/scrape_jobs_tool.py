@@ -18,39 +18,78 @@ class ScrapeJobsTool(BaseTool):
 
     def _run(self, query: str, location: Optional[str] = None) -> List[Dict[str, Any]]:
         results = []
-        # More realistic User-Agent to avoid some blocks
+        # Mimic a real browser to avoid 403/526 blocks
         headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "application/json, text/plain, */*",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
+            "Cache-Control": "max-age=0",
         }
 
         print(f"--- Fetching jobs for '{query}' in '{location}' ---")
 
-        # ---- Remotive API ----
+        # ---- Jobicy API (Good for additional global remote jobs) ----
         try:
-            # Remotive sometimes has SSL issues or Cloudflare filters. 
-            # We'll try to fetch with a timeout and verify=False if 526 persists.
-            remotive_url = f"https://remotive.io/api/remote-jobs?search={query}"
-            # Trying with a more standard request first
-            response = requests.get(remotive_url, timeout=15, headers=headers)
-            
+            jobicy_url = f"https://jobicy.com/api/v2/remote-jobs?count=20&tag={query}&geo={location if location and location.lower() != 'remote' else ''}"
+            response = requests.get(jobicy_url, timeout=15, headers=headers)
             if response.status_code == 200:
                 data = response.json()
                 jobs = data.get("jobs", [])
-                print(f"Remotive: Found {len(jobs)} potential jobs.")
-                for job in jobs[:15]:
+                print(f"Jobicy: Found {len(jobs)} potential jobs.")
+                for job in jobs:
                     results.append({
-                        "title": job.get("title"),
-                        "company": job.get("company_name"),
-                        "location": job.get("candidate_required_location", "Remote"),
-                        "salary": job.get("salary", "Not specified"),
-                        "date_posted": job.get("publication_date"),
+                        "title": job.get("jobTitle"),
+                        "company": job.get("companyName"),
+                        "location": f"{job.get('jobGeo', 'Remote')} (Remote)",
+                        "salary": job.get("annualSalaryMin") or job.get("salary") or "Not specified",
+                        "seniority": job.get("jobLevel", "Not specified"),
+                        "employment_type": job.get("jobType", "Full Time"),
+                        "date_posted": job.get("pubDate", "Recent"),
                         "link": job.get("url"),
-                        "source": "Remotive",
+                        "logo": job.get("companyLogo"),
+                        "source": "Jobicy",
                     })
-            elif response.status_code in [526, 525, 403]:
-                print(f"WARNING: Remotive API blocked or SSL issue ({response.status_code}). Attempting fallback...")
-                # Fallback: maybe just log it for now as 526 is usually server-side SSL
+        except Exception as e:
+            print(f"Error fetching from Jobicy: {e}")
+
+        # ---- Remotive API ----
+        try:
+            # Remotive URL - official is .io
+            remotive_url = f"https://remotive.io/api/remote-jobs?search={query}"
+            response = requests.get(remotive_url, timeout=15, headers=headers)
+            
+            if response.status_code == 200:
+                try:
+                    data = response.json()
+                    jobs = data.get("jobs", [])
+                    print(f"Remotive: Found {len(jobs)} potential jobs.")
+                    for job in jobs[:15]:
+                        # Filter by location if specified and not just "Remote"
+                        job_loc = job.get("candidate_required_location", "Remote")
+                        if location and location.lower() != "remote" and location.lower() not in job_loc.lower() and "remote" not in job_loc.lower():
+                            continue
+                            
+                        results.append({
+                            "title": job.get("title"),
+                            "company": job.get("company_name"),
+                            "location": job_loc,
+                            "salary": job.get("salary", "Not specified"),
+                            "seniority": "Not specified",
+                            "employment_type": job.get("job_type", "Full Time"),
+                            "date_posted": job.get("publication_date"),
+                            "link": job.get("url"),
+                            "logo": job.get("company_logo"),
+                            "source": "Remotive",
+                        })
+                except ValueError:
+                    print(f"ERROR: Remotive response was not JSON. Preview: {response.text[:200]}")
             else:
                 print(f"WARNING: Remotive API returned status code {response.status_code}")
         except Exception as e:
@@ -65,13 +104,23 @@ class ScrapeJobsTool(BaseTool):
                 jobs = data.get("data", [])
                 print(f"Arbeitnow: Found {len(jobs)} potential jobs.")
                 for job in jobs[:15]:
+                    # Arbeitnow is mostly EU. If user wants USA, we might skip unless it's remote.
+                    job_loc = job.get("location", "Remote")
+                    is_remote = job.get("remote", False)
+                    
+                    if location and location.lower() == "usa" and "germany" in job_loc.lower() and not is_remote:
+                        continue
+
                     results.append({
                         "title": job.get("title"),
                         "company": job.get("company_name"),
-                        "location": job.get("location", "Remote"),
+                        "location": job_loc,
                         "salary": "Not specified",
+                        "seniority": "Not specified",
+                        "employment_type": job.get("job_type", "Full Time"),
                         "date_posted": "Recent",
                         "link": job.get("url"),
+                        "logo": job.get("logo"), 
                         "source": "Arbeitnow",
                     })
             else:
@@ -79,30 +128,60 @@ class ScrapeJobsTool(BaseTool):
         except Exception as e:
             print(f"Error fetching from Arbeitnow: {e}")
 
-        # ---- HackerNews Jobs ----
+        # ---- HackerNews Jobs (YC) ----
         try:
-            # HN search can be tricky. We'll try searching for "hiring" and the query
-            hn_search_url = f"https://hn.algolia.com/api/v1/search?query={query}&tags=story"
+            # 'job' tag searches strictly for YC job posts
+            hn_search_url = f"https://hn.algolia.com/api/v1/search?query={query}&tags=job"
             response = requests.get(hn_search_url, timeout=10, headers=headers)
             if response.status_code == 200:
                 hits = response.json().get("hits", [])
-                # Filter for "Who is hiring" or jobs
-                matching_hits = [h for h in hits if "hiring" in h.get("title", "").lower() or "job" in h.get("title", "").lower()]
-                print(f"Hacker News: Found {len(matching_hits)} matching threads.")
-                for hit in matching_hits[:5]:
+                print(f"Hacker News: Found {len(hits)} matching job threads.")
+                for hit in hits[:10]:
+                    title = hit.get("title", "")
+                    company = "YC Startup"
+                    
+                    # Extraction logic for typical "Company (YC Batch) is hiring..." format
+                    lower_title = title.lower()
+                    if " is hiring " in lower_title:
+                        company_part = title.split(" is hiring ")[0]
+                        # Remove YC batch info like (YC S21)
+                        if "(" in company_part:
+                            company = company_part.split("(")[0].strip()
+                        else:
+                            company = company_part.strip()
+                    elif " hiring " in lower_title:
+                        company_part = title.lower().split(" hiring ")[0]
+                        if "(" in company_part:
+                            company = title[:len(company_part)].split("(")[0].strip()
+                        else:
+                            company = title[:len(company_part)].strip()
+                    else:
+                        # Sometimes title is just "Company: Role" or just "Role at Company"
+                        if " at " in title:
+                             company = title.split(" at ")[-1].strip()
+                        elif ":" in title:
+                             company = title.split(":")[0].strip()
+
+                    # Infer seniority/type from title
+                    seniority = "Not specified"
+                    if "senior" in lower_title: seniority = "Senior"
+                    elif "junior" in lower_title: seniority = "Junior"
+                    elif "staff" in lower_title: seniority = "Staff"
+                    elif "intern" in lower_title: seniority = "Intern"
+
                     results.append({
-                        "title": hit.get("title"),
-                        "company": "HN Startup",
-                        "location": "Remote/See link",
+                        "title": title,
+                        "company": company,
+                        "location": "Remote (Global) / YC",
                         "salary": "Not specified",
+                        "seniority": seniority,
+                        "employment_type": "Full Time",
                         "date_posted": hit.get("created_at"),
-                        "link": f"https://news.ycombinator.com/item?id={hit.get('objectID')}",
+                        "link": hit.get("url") or f"https://news.ycombinator.com/item?id={hit.get('objectID')}",
+                        "logo": "https://upload.wikimedia.org/wikipedia/commons/b/b2/Y_Combinator_logo.svg", 
                         "source": "HackerNews",
                     })
         except Exception as e:
             print(f"Error fetching from HN: {e}")
-
-        if not results:
-            print("!!! CRITICAL: All job sources returned zero results. !!!")
 
         return results
