@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ScoutHire Client
 
-## Getting Started
+Web interface for the ScoutHire job search and matching platform. Built with Next.js 16, React 19, and TypeScript.
 
-First, run the development server:
+## Technology Stack
+
+- **Framework**: Next.js 16.1.6 (App Router)
+- **UI Library**: React 19.2.3
+- **Language**: TypeScript 5
+- **Styling**: Tailwind CSS 4
+- **Icons**: Lucide React
+- **Markdown**: React Markdown
+
+## Prerequisites
+
+- Node.js 20 or higher
+- npm, yarn, or pnpm
+
+## Installation
+
+```bash
+npm install
+```
+
+## Development
+
+Start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The application will be available at [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Build
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create a production build:
 
-## Learn More
+```bash
+npm run build
+```
 
-To learn more about Next.js, take a look at the following resources:
+Start the production server:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm start
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project Structure
 
-## Deploy on Vercel
+```
+client/
+├── app/                    # Next.js app directory
+│   ├── globals.css        # Global styles
+│   ├── layout.tsx         # Root layout
+│   └── page.tsx           # Home page
+├── components/            # React components
+│   ├── Header.tsx         # Application header
+│   ├── JobResults.tsx     # Job listings display
+│   ├── SearchForm.tsx     # Search form component
+│   └── SidebarNav.tsx     # Navigation sidebar
+├── lib/                   # Utility functions
+│   └── utils.ts           # Helper utilities
+└── types/                 # TypeScript definitions
+    └── index.ts           # Shared type definitions
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Key Features
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Real-time Job Search**: Server-Sent Events (SSE) for live updates
+- **Responsive Design**: Mobile-first approach with Tailwind CSS
+- **Type Safety**: Full TypeScript coverage
+- **Markdown Support**: Rich formatting for job descriptions
+
+## API Integration
+
+The client communicates with the FastAPI backend via the `/api/v1/scout` endpoint. See the main project README for API documentation.
+
+## Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm start` - Start production server
+- `npm run lint` - Run ESLint
+
+## Environment
+
+No environment variables required for the client. The backend API URL is configured in the application code.
+
+## License
+
+MIT - See [LICENSE](../LICENSE) for details
