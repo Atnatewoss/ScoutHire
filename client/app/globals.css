@@ -1,26 +1,256 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #EFF3F3;
+  --surface: #FFFFFF;
+  --foreground: #000000;
+  --accent: #00F0A0;
+  --accent-foreground: #000000;
+  --border: #D1D9D9;
+  --muted: #667085;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-accent: var(--accent);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+* {
+  box-sizing: border-box;
+}
+
+/* Ocean Background Animation */
+@keyframes flow {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
   }
 }
 
+@keyframes wave {
+  0% {
+    transform: translateX(0) translateZ(0) scaleY(1);
+  }
+
+  50% {
+    transform: translateX(-25%) translateZ(0) scaleY(0.85);
+  }
+
+  100% {
+    transform: translateX(-50%) translateZ(0) scaleY(1);
+  }
+}
+
+.ocean-bg {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(-45deg, #001219, #005f73, #0a9396, #94d2bd);
+  background-size: 400% 400%;
+  animation: flow 15s ease infinite;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.wave {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 200%;
+  height: 100%;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" preserveAspectRatio="none"><path d="M0,450 C200,350 400,550 800,450 L800,600 L0,600 Z" fill="rgba(255,255,255,0.05)"/></svg>');
+  background-size: 50% 100%;
+  animation: wave 20s linear infinite;
+  transform-origin: bottom center;
+}
+
+.app-frame {
+  margin: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 0 80px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(40px);
+  background: rgba(255, 255, 255, 0.05);
+}
+
 body {
-  background: var(--background);
+  background: #000;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  height: 100vh;
+  width: 100vw;
+  margin: 0;
+  overflow: hidden;
+  zoom: 0.9;
+}
+
+/* Dashboard Sidebar Style */
+.sidebar-panel {
+  background-color: var(--surface);
+  border-right: 1px solid var(--border);
+}
+
+/* Shadcn-like Inputs */
+input,
+select,
+textarea {
+  background: var(--surface);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  color: var(--foreground);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Shadcn-like Primary Button */
+.btn-primary {
+  background-color: #000;
+  color: #fff;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  transition: all 0.2s ease;
+  border: 1px solid #000;
+}
+
+.btn-primary:hover {
+  background-color: #27272a;
+  border-color: #27272a;
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-primary:disabled {
+  background-color: #f4f4f5;
+  color: #a1a1aa;
+  border-color: #e4e4e7;
+  cursor: not-allowed;
+}
+
+/* Toast System */
+.toast-container {
+  position: fixed;
+  top: 2rem;
+  right: 2rem;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #000;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  min-width: 300px;
+  animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes toast-in {
+  from {
+    transform: translateX(100%) scale(0.9);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* Ensure no-scrollbar actually hides if needed, but we'll use custom-scrollbar for most */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.report-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Markdown prose overrides */
+.prose {
+  color: var(--foreground);
+  max-width: none;
+}
+
+.prose h1,
+.prose h2,
+.prose h3 {
+  color: var(--foreground);
+  margin-top: 1.5em;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+.prose p {
+  line-height: 1.75;
+}
+
+.prose strong {
+  color: var(--accent-foreground);
+  background: rgba(0, 240, 160, 0.1);
+  padding: 0 4px;
+  border-radius: 4px;
 }
